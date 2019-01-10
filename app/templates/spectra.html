@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block styles %}
+{{super()}}
+<style type="text/css">
+        .chart{
+            margin-top: 30px;
+            text-align: center;
+        }
+    </style>
+{% endblock %}
+
+
+{% block app_content %}
+    <div class="header">
+        <h2>
+            Plotly Chart Demo
+        </h2>
+    </div>
+    <form method="POST">
+        {{ form.csrf_token}}
+        {{form.category}}
+        {{form.matrname}}
+        {{form.smples}}
+        {{form.description}}
+    </form>
+    <div id="chart" class="chart">
+    </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script type="text/javascript">
+
+        var graphs = {{graphJSON | safe}};
+        var layout = {
+            xaxis: {
+                 title: 'Wavelength( &mu;m)',
+                 titlefont: {
+                        family: 'Helvetica, monospace',
+                        size: 20,
+                        color: '#7f7f7f'
+                   }
+            },
+            yaxis: {
+                  title: 'Fluorescence(%)',
+                  titlefont: {
+                         family: 'Helvetica, monospace',
+                         size: 20,
+                         color: '#7f7f7f'
+                   }
+             }
+        };
+
+        Plotly.newPlot('chart',graphs, layout);
+
+</script>
+<script type="text/javascript">
+    let category_select = document.getElementById("category");
+    let matrname_select= document.getElementById("matrname");
+    let smples_select= document.getElementById("smples");
+    let descr = document.getElementById("description");
+    let xarr=[];
+    let yarr =[];
+    var chart = document.getElementById('chart')
+
+
+    category_select.onchange = function(){
+        category = category_select.value;
+        category_select.setAttribute('disabled', true);
+        matrname_select.setAttribute('disabled', true);
+        fetch('/matrname/' + category).then(function(response) {
+                response.json().then(function(data) {
+                    var optionHTML = '';
+
+                    for (var mat of data.matrnames) {
+                        optionHTML += '<option value="' + mat.id + '">' + mat.name + '</option>';
+                    }
+
+                    matrname_select.innerHTML = optionHTML;
+                })
+                category_select.removeAttribute('disabled');
+                matrname_select.removeAttribute('disabled');
+            });
+    }
+
+    matrname_select.onchange = function(){
+         matrname = matrname_select.value;
+         category_select.setAttribute('disabled', true);
+         matrname_select.setAttribute('disabled', true);
+         smples_select.setAttribute('disabled', true);
+         fetch('/smple/' + matrname).then(function(response) {
+                response.json().then(function(data) {
+                    var optionHTML = '';
+
+                    for (var smp of data.smples) {
+                        optionHTML += '<option value="' + smp.id + '">' + smp.name + '</option>';
+                    }
+
+                    smples_select.innerHTML = optionHTML;
+                })
+                category_select.removeAttribute('disabled');
+                matrname_select.removeAttribute('disabled');
+                smples_select.removeAttribute('disabled');
+            });
+    }
+
+    smples_select.onchange = function(){
+         smple = smples_select.value;
+
+         category_select.setAttribute('disabled', true);
+         matrname_select.setAttribute('disabled', true);
+         smples_select.setAttribute('disabled', true);
+         fetch('/grph/' + smple).then(function(response) {
+                response.json().then(function(data) {
+                for (var dt of data.grph){
+                if (dt.id == 'x'){ xarr = dt.val; ;}
+                if (dt.id == 'y'){ yarr = dt.val;}
+                if (dt.id == 'dsc'){ descr.value = dt.val;}
+                    }
+                var trace = {
+                    x: xarr,
+                    y: yarr,
+                    mode: 'lines+markers',
+                    type: 'scatter',
+                    marker: {size: 4}
+                    };
+                 var  data = [trace];
+                 Plotly.newPlot(chart,data,layout);
+                })
+                category_select.removeAttribute('disabled');
+                matrname_select.removeAttribute('disabled');
+                smples_select.removeAttribute('disabled');
+            });
+    }
+</script>
+{% endblock %}
