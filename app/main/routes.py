@@ -35,7 +35,6 @@ def before_request():
     g.locale = str(get_locale())
 
 
-@bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
@@ -47,14 +46,21 @@ def index():
 
         target = os.path.join(os.path.abspath(os.path.join(basedir,'..')), 'static')
         f = request.files.get('image', '')
-        f.save(os.path.join(target, f.filename))
-        extension = f.filename
+        print("ha", f)
+        if f == '':
+            print("here")
+            img = None
+            extension = None
+        else:
+            f.save(os.path.join(target, f.filename))
+            extension = f.filename
+            img = f.read()
         post = Post(body=form.post.data, author=current_user,
-                    language=language,image=f.read(), extension=extension)
+                    language=language,image=img, extension=extension)
         db.session.add(post)
         db.session.commit()
-        print(post.id)
-        f.save(os.path.join(target, str(post.id)+extension))
+        if f != '':
+            f.save(os.path.join(target, str(post.id)+extension))
         flash(_('Your post is now live!'))
         return redirect(url_for('main.index'))
     page = request.args.get('page', 1, type=int)
@@ -69,8 +75,8 @@ def index():
                            prev_url=prev_url)
 
 
+@bp.route('/')
 @bp.route('/explore')
-@login_required
 def explore():
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.timestamp.desc()).paginate(
@@ -79,7 +85,7 @@ def explore():
         if posts.has_next else None
     prev_url = url_for('main.explore', page=posts.prev_num) \
         if posts.has_prev else None
-    return render_template('index.html', title=_('Explore'),
+    return render_template('explore.html', title=_('Explore'),
                            posts=posts.items, next_url=next_url,
                            prev_url=prev_url)
 
@@ -173,7 +179,6 @@ def search():
 
 
 @bp.route('/spectra', methods=['GET', 'POST'])
-@login_required
 def spectra():
     form = SpectraForm()
     form.category.choices = [(cat, cat) for cat in sorted(Samples.get_classes())]
